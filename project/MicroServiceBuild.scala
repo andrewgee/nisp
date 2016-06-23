@@ -36,7 +36,8 @@ private object AppDependencies {
     "com.kenshoo" %% "metrics-play" % "2.3.0_0.1.6",
     "uk.gov.hmrc" %% "play-json-logger" % "2.1.1",
     "uk.gov.hmrc" %% "domain" % "3.2.0",
-    "uk.gov.hmrc" %% "play-url-binders" % "1.0.0"
+    "uk.gov.hmrc" %% "play-url-binders" % "1.0.0",
+    "uk.gov.hmrc" %% "play-reactivemongo" % "4.8.0"
   )
 
   trait TestDependencies {
@@ -52,7 +53,8 @@ private object AppDependencies {
         "org.scalatestplus" % "play_2.11" % "1.2.0" % scope,
         "org.pegdown" % "pegdown" % "1.4.2" % scope,
         "com.typesafe.play" %% "play-test" % PlayVersion.current % scope,
-        "org.mockito" % "mockito-all" % "1.10.19" % scope
+        "org.mockito" % "mockito-all" % "1.10.19" % scope,
+        "uk.gov.hmrc" %% "reactivemongo-test" % "1.6.0" % scope
       )
     }.test
   }

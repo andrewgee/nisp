@@ -25,13 +25,14 @@ import uk.gov.hmrc.nisp.metrics.Metrics
 import uk.gov.hmrc.nisp.models.enums.APITypes
 import uk.gov.hmrc.nisp.models.enums.APITypes.APITypes
 import uk.gov.hmrc.nisp.models.nps._
+import uk.gov.hmrc.nisp.services.CachingService
 import uk.gov.hmrc.nisp.utils.NISPConstants
 import uk.gov.hmrc.play.config.ServicesConfig
 import uk.gov.hmrc.play.http.logging.MdcLoggingExecutionContext._
-import uk.gov.hmrc.play.http.{HttpReads, HttpResponse, HttpGet, HeaderCarrier}
+import uk.gov.hmrc.play.http.{HeaderCarrier, HttpGet, HttpReads, HttpResponse}
 
 import scala.concurrent.Future
-import scala.util.{Success, Failure, Try}
+import scala.util.{Failure, Success, Try}
 
 object NpsConnector extends NpsConnector with ServicesConfig {
   override val serviceUrl = baseUrl("nps-hod")
@@ -57,6 +58,18 @@ trait NpsConnector {
   private def ninoWithoutSuffix(nino: Nino): String = nino.value.substring(0, NISPConstants.ninoLengthWithoutSuffix)
 
   def connectToSummary(nino: Nino)(implicit hc: HeaderCarrier): Future[NpsSummaryModel] = {
+
+//    CachingService.findByNino(nino, APITypes.Summary) flatMap {
+//      case Some(summary: NpsSummaryModel) => Future.successful(summary)
+//      case _ =>
+//        val urlToRead = url(s"/nps-rest-service/services/nps/pensions/${ninoWithoutSuffix(nino)}/sp_summary")
+//        connectToNps[NpsSummaryModel](urlToRead, APITypes.Summary, requestHeaderCarrier)(hc, NpsSummaryModel.formats).map {
+//          summary =>
+//            CachingService.insertByNino(nino, APITypes.Summary, summary)
+//            summary
+//        }
+//    }
+
     val urlToRead = url(s"/nps-rest-service/services/nps/pensions/${ninoWithoutSuffix(nino)}/sp_summary")
     connectToNps(urlToRead, APITypes.Summary, requestHeaderCarrier)(hc, NpsSummaryModel.formats)
   }
