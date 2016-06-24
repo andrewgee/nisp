@@ -25,7 +25,6 @@ import uk.gov.hmrc.nisp.metrics.Metrics
 import uk.gov.hmrc.nisp.models.enums.APITypes
 import uk.gov.hmrc.nisp.models.enums.APITypes.APITypes
 import uk.gov.hmrc.nisp.models.nps._
-import uk.gov.hmrc.nisp.services.CachingService
 import uk.gov.hmrc.nisp.utils.NISPConstants
 import uk.gov.hmrc.play.config.ServicesConfig
 import uk.gov.hmrc.play.http.logging.MdcLoggingExecutionContext._

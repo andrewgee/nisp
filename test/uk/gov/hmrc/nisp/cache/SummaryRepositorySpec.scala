@@ -14,9 +14,7 @@
  * limitations under the License.
  */
 
-package uk.gov.hmrc.nisp.services
-
-import java.util.UUID
+package uk.gov.hmrc.nisp.cache
 
 import org.mockito.Matchers
 import org.mockito.Mockito._
@@ -32,7 +30,7 @@ import uk.gov.hmrc.play.test.UnitSpec
 
 import scala.concurrent.Future
 
-class CachingServiceSpec extends UnitSpec with OneServerPerSuite with MongoSpecSupport with MockitoSugar {
+class SummaryRepositorySpec extends UnitSpec with OneServerPerSuite with MongoSpecSupport with MockitoSugar {
 
   val testSummaryModel = NpsSummaryModel(
     TestAccountBuilder.regularNino.toString(),
@@ -82,9 +80,9 @@ class CachingServiceSpec extends UnitSpec with OneServerPerSuite with MongoSpecS
     )
   )
 
-  "CachingMongoService" should {
+  "SummaryMongoService" should {
 
-    val service = new CachingMongoService()
+    val service = new SummaryMongoService()
 
     "persist a SummaryModel in the repo" in {
       val resultF = service.insertByNino(TestAccountBuilder.regularNino, APITypes.Summary, testSummaryModel)
@@ -109,13 +107,13 @@ class CachingServiceSpec extends UnitSpec with OneServerPerSuite with MongoSpecS
 
       when(stubCollection.indexesManager).thenReturn(stubIndexesManager)
 
-      class TestCachingMongoService extends CachingMongoService  {
+      class TestSummaryMongoService extends SummaryMongoService  {
         override lazy val collection = stubCollection
       }
       when(stubCollection.find(Matchers.any())(Matchers.any())).thenThrow(new RuntimeException)
       when(stubCollection.indexesManager.ensure(Matchers.any())).thenReturn(Future.successful(true))
 
-      val testRepository = new TestCachingMongoService
+      val testRepository = new TestSummaryMongoService
 
       val found = await(testRepository.findByNino(TestAccountBuilder.excludedNino, APITypes.Summary))
       found shouldBe None

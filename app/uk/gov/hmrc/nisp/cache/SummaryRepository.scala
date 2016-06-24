@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package uk.gov.hmrc.nisp.services
+package uk.gov.hmrc.nisp.cache
 
 import org.joda.time.{DateTime, DateTimeZone}
 import play.api.Logger
@@ -35,24 +35,24 @@ import uk.gov.hmrc.play.http.logging.MdcLoggingExecutionContext._
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.util.{Failure, Success, Try}
 
-case class CachedResponse(key: String,
+case class SummaryCacheModel(key: String,
                              response: NpsSummaryModel,
                              createdAt: DateTime = DateTime.now(DateTimeZone.UTC))
 
-object CachedResponse {
+object SummaryCacheModel {
   implicit val dateFormat = ReactiveMongoFormats.dateTimeFormats
   implicit val idFormat = ReactiveMongoFormats.objectIdFormats
-  implicit def formats = Json.format[CachedResponse]
+  implicit def formats = Json.format[SummaryCacheModel]
 }
 
-trait CachingService {
+trait SummaryRepository {
   def findByNino(nino: Nino, apiType: APITypes): Future[Option[NpsSummaryModel]]
   def insertByNino(nino: Nino, apiType: APITypes, response: NpsSummaryModel): Future[Boolean]
 }
 
-class CachingMongoService()(implicit mongo: () => DefaultDB)
-  extends ReactiveRepository[CachedResponse, BSONObjectID]("responses", mongo, CachedResponse.formats)
-    with CachingService {
+class SummaryMongoService()(implicit mongo: () => DefaultDB)
+  extends ReactiveRepository[SummaryCacheModel, BSONObjectID]("responses", mongo, SummaryCacheModel.formats)
+    with SummaryRepository {
 
   val fieldName = "createdAt"
   val createdIndexName = "npsResponseExpiry"
@@ -80,18 +80,17 @@ class CachingMongoService()(implicit mongo: () => DefaultDB)
     }
   }
 
-  private def cacheKey(nino: Nino, apiTypes: APITypes) = s"${nino.toString()}-${apiTypes.toString}"
 
   override def findByNino(nino: Nino, apiType: APITypes): Future[Option[NpsSummaryModel]] = {
     val tryResult = Try {
       //metrics.cacheRead()
-      collection.find(Json.obj("key" -> cacheKey(nino, apiType))).cursor[CachedResponse](ReadPreference.primary).collect[List]()
+      collection.find(Json.obj("key" -> nino.toString())).cursor[SummaryCacheModel](ReadPreference.primary).collect[List]()
     }
 
     tryResult match {
       case Success(success) => {
         success.map { results =>
-          Logger.debug(s"[CachingMongoService][findByNino] : { cacheKey : ${cacheKey(nino, apiType)}, result: $results }")
+          Logger.debug(s"[SummaryMongoService][findByNino] : { cacheKey : ${nino.toString()}}, result: $results }")
           val response = results.headOption.map(_.response)
           response match {
             case Some(summaryModel) =>
@@ -101,25 +100,24 @@ class CachingMongoService()(implicit mongo: () => DefaultDB)
         }
       }
       case Failure(failure) => {
-        Logger.debug(s"[CachingMongoService][findByNino] : { cacheKey : ${cacheKey(nino, apiType)}, exception: ${failure.getMessage} }")
+        Logger.debug(s"[SummaryMongoService][findByNino] : { cacheKey : ${nino.toString()}, exception: ${failure.getMessage} }")
         Future.successful(None)
       }
     }
   }
 
   override def insertByNino(nino: Nino, apiType: APITypes, response: NpsSummaryModel): Future[Boolean] = {
-    collection.insert(CachedResponse(cacheKey(nino, apiType), response)).map { result =>
-      Logger.debug(s"[CachingMongoService][insertByNino] : { cacheKey : ${cacheKey(nino, apiType)}, request: $response, result: ${result.ok}, errors: ${result.errmsg} }")
+    collection.insert(SummaryCacheModel(nino.toString(), response)).map { result =>
+      Logger.debug(s"[SummaryMongoService][insertByNino] : { cacheKey : ${nino.toString()}, request: $response, result: ${result.ok}, errors: ${result.errmsg} }")
       result.ok
     }
   }
 }
 
-object CachingService extends MongoDbConnection {
+object SummaryRepository extends MongoDbConnection {
 
-  private lazy val cacheService = new CachingMongoService()
+  private lazy val cacheService = new SummaryMongoService()
 
-  def apply(): CachingMongoService = cacheService
-
+  def apply(): SummaryMongoService = cacheService
 }
 
