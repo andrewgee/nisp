@@ -20,25 +20,25 @@ import org.joda.time.{DateTime, DateTimeZone}
 import play.api.libs.json.Json
 import play.modules.reactivemongo.MongoDbConnection
 import uk.gov.hmrc.mongo.json.ReactiveMongoFormats
-import uk.gov.hmrc.nisp.models.nps.NpsSummaryModel
+import uk.gov.hmrc.nisp.models.nps.NpsNIRecordModel
 import uk.gov.hmrc.nisp.services.{CachingModel, CachingMongoService}
 
 import play.api.libs.concurrent.Execution.Implicits._
 
-case class SummaryCacheModel(key: String,
-                             response: NpsSummaryModel,
-                             createdAt: DateTime = DateTime.now(DateTimeZone.UTC)) extends CachingModel[SummaryCacheModel, NpsSummaryModel]
+case class NationalInsuranceCacheModel(key: String,
+                             response: NpsNIRecordModel,
+                             createdAt: DateTime = DateTime.now(DateTimeZone.UTC)) extends CachingModel[NationalInsuranceCacheModel, NpsNIRecordModel]
 
-object SummaryCacheModel {
+object NationalInsuranceCacheModel {
   implicit val dateFormat = ReactiveMongoFormats.dateTimeFormats
   implicit val idFormat = ReactiveMongoFormats.objectIdFormats
-  implicit def formats = Json.format[SummaryCacheModel]
+  implicit def formats = Json.format[NationalInsuranceCacheModel]
 }
 
-object SummaryRepository extends MongoDbConnection {
+object NationalInsuranceRepository extends MongoDbConnection {
 
-  private lazy val cacheService = new CachingMongoService[SummaryCacheModel, NpsSummaryModel](SummaryCacheModel.formats, SummaryCacheModel.apply)
+  private lazy val cacheService = new CachingMongoService[NationalInsuranceCacheModel, NpsNIRecordModel](NationalInsuranceCacheModel.formats, NationalInsuranceCacheModel.apply)
 
-  def apply(): CachingMongoService[SummaryCacheModel, NpsSummaryModel] = cacheService
+  def apply(): CachingMongoService[NationalInsuranceCacheModel, NpsNIRecordModel] = cacheService
 }
 

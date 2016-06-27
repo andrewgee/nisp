@@ -19,23 +19,16 @@ package uk.gov.hmrc.nisp.services
 import org.joda.time.{DateTime, DateTimeZone}
 import play.api.Logger
 import play.api.libs.json._
-import reactivemongo.api.{DefaultDB, ReadPreference}
 import reactivemongo.api.indexes.{Index, IndexType}
+import reactivemongo.api.{DefaultDB, ReadPreference}
 import reactivemongo.bson.{BSONDocument, BSONObjectID}
 import uk.gov.hmrc.domain.Nino
 import uk.gov.hmrc.mongo.ReactiveRepository
 import uk.gov.hmrc.mongo.json.ReactiveMongoFormats
-import uk.gov.hmrc.nisp.cache.SummaryCacheModel
 import uk.gov.hmrc.nisp.models.enums.APITypes._
-import uk.gov.hmrc.nisp.models.nps.NpsSummaryModel
 
 import scala.concurrent.{ExecutionContext, Future}
 import scala.util.{Failure, Success, Try}
-import uk.gov.hmrc.play.http.logging.MdcLoggingExecutionContext._
-
-
-
-
 
 trait CachingModel[A, B] {
   def response: B
@@ -78,17 +71,19 @@ class CachingMongoService[A <: CachingModel[A, B], B](formats: Format[A], apply:
     }
   }
 
+  private def cacheKey(nino: Nino, api: APITypes) = s"$nino-$api"
+
 
   override def findByNino(nino: Nino, apiType: APITypes)(implicit formats: Reads[A], ec: ExecutionContext): Future[Option[B]] = {
     val tryResult = Try {
       //metrics.cacheRead()
-      collection.find(Json.obj("key" -> nino.toString())).cursor[A](ReadPreference.primary).collect[List]()
+      collection.find(Json.obj("key" -> cacheKey(nino, apiType))).cursor[A](ReadPreference.primary).collect[List]()
     }
 
     tryResult match {
       case Success(success) => {
         success.map { results =>
-          Logger.debug(s"[SummaryMongoService][findByNino] : { cacheKey : ${nino.toString()}}, result: $results }")
+          Logger.debug(s"[$apiType][findByNino] : { cacheKey : ${cacheKey(nino, apiType)}, result: $results }")
           val response = results.headOption.map(_.response)
           response match {
             case Some(summaryModel) =>
@@ -98,15 +93,15 @@ class CachingMongoService[A <: CachingModel[A, B], B](formats: Format[A], apply:
         }
       }
       case Failure(failure) => {
-        Logger.debug(s"[SummaryMongoService][findByNino] : { cacheKey : ${nino.toString()}, exception: ${failure.getMessage} }")
+        Logger.debug(s"[$apiType][findByNino] : { cacheKey : ${cacheKey(nino, apiType)}, exception: ${failure.getMessage} }")
         Future.successful(None)
       }
     }
   }
 
   override def insertByNino(nino: Nino, apiType: APITypes, response: B)(implicit formats: OFormat[A], ec: ExecutionContext): Future[Boolean] = {
-    collection.insert(apply(nino.toString(), response, DateTime.now(DateTimeZone.UTC))).map { result =>
-      Logger.debug(s"[SummaryMongoService][insertByNino] : { cacheKey : ${nino.toString()}, request: $response, result: ${result.ok}, errors: ${result.errmsg} }")
+    collection.insert(apply(cacheKey(nino, apiType), response, DateTime.now(DateTimeZone.UTC))).map { result =>
+      Logger.debug(s"[$apiType][insertByNino] : { cacheKey : ${cacheKey(nino, apiType)}, request: $response, result: ${result.ok}, errors: ${result.errmsg} }")
       result.ok
     }
   }
