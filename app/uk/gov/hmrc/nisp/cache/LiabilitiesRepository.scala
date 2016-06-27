@@ -17,28 +17,30 @@
 package uk.gov.hmrc.nisp.cache
 
 import org.joda.time.{DateTime, DateTimeZone}
-import play.api.libs.concurrent.Execution.Implicits._
 import play.api.libs.json.Json
 import play.modules.reactivemongo.MongoDbConnection
-import uk.gov.hmrc.nisp.models.enums.APITypes
-import uk.gov.hmrc.nisp.models.nps.NpsNIRecordModel
+import uk.gov.hmrc.mongo.json.ReactiveMongoFormats
+import uk.gov.hmrc.nisp.models.nps.{NpsLiabilityContainer, NpsNIRecordModel}
 import uk.gov.hmrc.nisp.services.{CachingModel, CachingMongoService}
+import play.api.libs.concurrent.Execution.Implicits._
+import uk.gov.hmrc.nisp.models.enums.APITypes
+import uk.gov.hmrc.nisp.models.enums.APITypes.APITypes
 
-case class NationalInsuranceCacheModel(key: String,
-                             response: NpsNIRecordModel,
+case class LiabilitiesCacheModel(key: String,
+                             response: NpsLiabilityContainer,
                              createdAt: DateTime = DateTime.now(DateTimeZone.UTC))
-  extends CachingModel[NationalInsuranceCacheModel, NpsNIRecordModel] {
+  extends CachingModel[LiabilitiesCacheModel, NpsLiabilityContainer] {
 }
 
-object NationalInsuranceCacheModel {
-  implicit def formats = Json.format[NationalInsuranceCacheModel]
+object LiabilitiesCacheModel {
+  implicit def formats = Json.format[LiabilitiesCacheModel]
 }
 
-object NationalInsuranceRepository extends MongoDbConnection {
+object LiabilitiesRepository extends MongoDbConnection {
 
   private lazy val cacheService = new CachingMongoService
-    [NationalInsuranceCacheModel, NpsNIRecordModel](NationalInsuranceCacheModel.formats, NationalInsuranceCacheModel.apply, APITypes.NIRecord)
+    [LiabilitiesCacheModel, NpsLiabilityContainer](LiabilitiesCacheModel.formats, LiabilitiesCacheModel.apply, APITypes.Liabilities)
 
-  def apply(): CachingMongoService[NationalInsuranceCacheModel, NpsNIRecordModel] = cacheService
+  def apply(): CachingMongoService[LiabilitiesCacheModel, NpsLiabilityContainer] = cacheService
 }
 

@@ -21,24 +21,24 @@ import play.api.libs.concurrent.Execution.Implicits._
 import play.api.libs.json.Json
 import play.modules.reactivemongo.MongoDbConnection
 import uk.gov.hmrc.nisp.models.enums.APITypes
-import uk.gov.hmrc.nisp.models.nps.NpsNIRecordModel
+import uk.gov.hmrc.nisp.models.nps.NpsSchemeMembershipContainer
 import uk.gov.hmrc.nisp.services.{CachingModel, CachingMongoService}
 
-case class NationalInsuranceCacheModel(key: String,
-                             response: NpsNIRecordModel,
+case class SchemeMembershipCacheModel(key: String,
+                             response: NpsSchemeMembershipContainer,
                              createdAt: DateTime = DateTime.now(DateTimeZone.UTC))
-  extends CachingModel[NationalInsuranceCacheModel, NpsNIRecordModel] {
+  extends CachingModel[SchemeMembershipCacheModel, NpsSchemeMembershipContainer] {
 }
 
-object NationalInsuranceCacheModel {
-  implicit def formats = Json.format[NationalInsuranceCacheModel]
+object SchemeMembershipCacheModel {
+  implicit def formats = Json.format[SchemeMembershipCacheModel]
 }
 
-object NationalInsuranceRepository extends MongoDbConnection {
+object SchemeMembershipRepository extends MongoDbConnection {
 
   private lazy val cacheService = new CachingMongoService
-    [NationalInsuranceCacheModel, NpsNIRecordModel](NationalInsuranceCacheModel.formats, NationalInsuranceCacheModel.apply, APITypes.NIRecord)
+    [SchemeMembershipCacheModel, NpsSchemeMembershipContainer](SchemeMembershipCacheModel.formats, SchemeMembershipCacheModel.apply, APITypes.SchemeMembership)
 
-  def apply(): CachingMongoService[NationalInsuranceCacheModel, NpsNIRecordModel] = cacheService
+  def apply(): CachingMongoService[SchemeMembershipCacheModel, NpsSchemeMembershipContainer] = cacheService
 }
 

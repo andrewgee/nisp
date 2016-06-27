@@ -32,39 +32,28 @@ import uk.gov.hmrc.play.test.UnitSpec
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 
-import play.api.libs.concurrent.Execution.Implicits._
+class SchemeMembershipRepositorySpec extends UnitSpec with OneServerPerSuite with MongoSpecSupport with MockitoSugar {
 
-class NationalInsuranceRepositorySpec extends UnitSpec with OneServerPerSuite with MongoSpecSupport with MockitoSugar {
-
-  val testNIModel = NpsNIRecordModel(
-    TestAccountBuilder.regularNino.toString(),
-    35,
-    0,
-    10,
-    0,
-    0,
-    NpsDate(1975, 3, 4),
+  val testSchemeMembershipModel = NpsSchemeMembershipContainer(
     List(
-      NpsNITaxYear(2015, 1, 0, 0, None, None, None, None, None, None, None, None, None, Some(20000), None, None, None, None, None, None)
+      NpsSchemeMembership(Some(NpsDate(1980, 4, 6)), None),
+      NpsSchemeMembership(Some(NpsDate(1975, 4, 6)), Some(NpsDate(1999, 12, 31)))
     )
-
   )
 
-  "NationalInsuranceRepository" should {
+  "SchemeMembershipRepository" should {
 
+    val service = new CachingMongoService[SchemeMembershipCacheModel, NpsSchemeMembershipContainer](SchemeMembershipCacheModel.formats, SchemeMembershipCacheModel.apply, APITypes.SchemeMembership)
 
+    "persist a SchemeMembershipModel in the repo" in {
 
-    val service = new CachingMongoService[NationalInsuranceCacheModel, NpsNIRecordModel](NationalInsuranceCacheModel.formats, NationalInsuranceCacheModel.apply, APITypes.NIRecord)
-
-    "persist a NIRecordModel in the repo" in {
-
-      val resultF = service.insertByNino(TestAccountBuilder.regularNino, testNIModel)
+      val resultF = service.insertByNino(TestAccountBuilder.regularNino, testSchemeMembershipModel)
       await(resultF) shouldBe true
     }
 
-    "find a NIRecordModel in the repo" in {
+    "find a SchemeMembershipModel in the repo" in {
       val resultF = service.findByNino(TestAccountBuilder.regularNino)
-      resultF.get shouldBe testNIModel
+      resultF.get shouldBe testSchemeMembershipModel
     }
 
     "return None when there is nothing in the repo" in {
@@ -79,8 +68,8 @@ class NationalInsuranceRepositorySpec extends UnitSpec with OneServerPerSuite wi
 
       when(stubCollection.indexesManager).thenReturn(stubIndexesManager)
 
-      class TestSummaryMongoService extends CachingMongoService[NationalInsuranceCacheModel, NpsNIRecordModel
-        ](NationalInsuranceCacheModel.formats, NationalInsuranceCacheModel.apply, APITypes.NIRecord)  {
+      class TestSummaryMongoService extends CachingMongoService[SchemeMembershipCacheModel, NpsSchemeMembershipContainer
+        ](SchemeMembershipCacheModel.formats, SchemeMembershipCacheModel.apply, APITypes.SchemeMembership)  {
         override lazy val collection = stubCollection
       }
       when(stubCollection.find(Matchers.any())(Matchers.any())).thenThrow(new RuntimeException)

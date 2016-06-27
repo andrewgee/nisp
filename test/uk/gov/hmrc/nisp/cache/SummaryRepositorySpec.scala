@@ -86,23 +86,21 @@ class SummaryRepositorySpec extends UnitSpec with OneServerPerSuite with MongoSp
 
   "SummaryMongoService" should {
 
-
-
-    val service = new CachingMongoService[SummaryCacheModel, NpsSummaryModel](SummaryCacheModel.formats, SummaryCacheModel.apply)
+    val service = new CachingMongoService[SummaryCacheModel, NpsSummaryModel](SummaryCacheModel.formats, SummaryCacheModel.apply, APITypes.Summary)
 
     "persist a SummaryModel in the repo" in {
 
-      val resultF = service.insertByNino(TestAccountBuilder.regularNino, APITypes.Summary, testSummaryModel)
+      val resultF = service.insertByNino(TestAccountBuilder.regularNino, testSummaryModel)
       await(resultF) shouldBe true
     }
 
     "find a SummaryModel in the repo" in {
-      val resultF = service.findByNino(TestAccountBuilder.regularNino, APITypes.Summary)
+      val resultF = service.findByNino(TestAccountBuilder.regularNino)
       resultF.get shouldBe testSummaryModel
     }
 
     "return None when there is nothing in the repo" in {
-      val resultF = service.findByNino(TestAccountBuilder.excludedNino, APITypes.Summary)
+      val resultF = service.findByNino(TestAccountBuilder.excludedNino)
       await(resultF) shouldBe None
     }
 
@@ -114,7 +112,7 @@ class SummaryRepositorySpec extends UnitSpec with OneServerPerSuite with MongoSp
 
       when(stubCollection.indexesManager).thenReturn(stubIndexesManager)
 
-      class TestSummaryMongoService extends CachingMongoService[SummaryCacheModel, NpsSummaryModel](SummaryCacheModel.formats, SummaryCacheModel.apply)  {
+      class TestSummaryMongoService extends CachingMongoService[SummaryCacheModel, NpsSummaryModel](SummaryCacheModel.formats, SummaryCacheModel.apply, APITypes.Summary)  {
         override lazy val collection = stubCollection
       }
       when(stubCollection.find(Matchers.any())(Matchers.any())).thenThrow(new RuntimeException)
@@ -122,7 +120,7 @@ class SummaryRepositorySpec extends UnitSpec with OneServerPerSuite with MongoSp
 
       val testRepository = new TestSummaryMongoService
 
-      val found = await(testRepository.findByNino(TestAccountBuilder.excludedNino, APITypes.Summary))
+      val found = await(testRepository.findByNino(TestAccountBuilder.excludedNino))
       found shouldBe None
     }
 

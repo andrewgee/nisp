@@ -31,17 +31,21 @@ import scala.concurrent.{ExecutionContext, Future}
 import scala.util.{Failure, Success, Try}
 
 trait CachingModel[A, B] {
-  def response: B
+  val key: String
+  val response: B
+  val createdAt: DateTime
   implicit val dateFormat = ReactiveMongoFormats.dateTimeFormats
   implicit val idFormat = ReactiveMongoFormats.objectIdFormats
 }
 
 trait CachingService[A, B] {
-  def findByNino(nino: Nino, apiType: APITypes)(implicit formats: Reads[A], ec: ExecutionContext): Future[Option[B]]
-  def insertByNino(nino: Nino, apiType: APITypes, response: B)(implicit formats: OFormat[A], ec: ExecutionContext): Future[Boolean]
+  def findByNino(nino: Nino)(implicit formats: Reads[A], e: ExecutionContext): Future[Option[B]]
+  def insertByNino(nino: Nino, response: B)(implicit formats: OFormat[A], e: ExecutionContext): Future[Boolean]
 }
 
-class CachingMongoService[A <: CachingModel[A, B], B](formats: Format[A], apply: (String, B, DateTime) => A)(implicit mongo: () => DefaultDB, m: Manifest[A], ec: ExecutionContext)
+class CachingMongoService[A <: CachingModel[A, B], B]
+  (formats: Format[A], apply: (String, B, DateTime) => A, apiType: APITypes)
+  (implicit mongo: () => DefaultDB, m: Manifest[A], e: ExecutionContext)
   extends ReactiveRepository[A, BSONObjectID]("responses", mongo, formats)
     with CachingService[A, B] {
 
@@ -54,7 +58,7 @@ class CachingMongoService[A <: CachingModel[A, B], B](formats: Format[A], apply:
   Logger.info(s"NPS Cache TTL set to $timeToLive")
   createIndex(fieldName, createdIndexName, timeToLive)
 
-  private def createIndex(field: String, indexName: String, ttl: Int)(implicit ec: ExecutionContext): Future[Boolean] = {
+  private def createIndex(field: String, indexName: String, ttl: Int)(implicit e: ExecutionContext): Future[Boolean] = {
     collection.indexesManager.ensure(Index(Seq((field, IndexType.Ascending)), Some(indexName),
       options = BSONDocument(expireAfterSeconds -> ttl))) map {
       result => {
@@ -74,7 +78,7 @@ class CachingMongoService[A <: CachingModel[A, B], B](formats: Format[A], apply:
   private def cacheKey(nino: Nino, api: APITypes) = s"$nino-$api"
 
 
-  override def findByNino(nino: Nino, apiType: APITypes)(implicit formats: Reads[A], ec: ExecutionContext): Future[Option[B]] = {
+  override def findByNino(nino: Nino)(implicit formats: Reads[A], e: ExecutionContext): Future[Option[B]] = {
     val tryResult = Try {
       //metrics.cacheRead()
       collection.find(Json.obj("key" -> cacheKey(nino, apiType))).cursor[A](ReadPreference.primary).collect[List]()
@@ -92,16 +96,18 @@ class CachingMongoService[A <: CachingModel[A, B], B](formats: Format[A], apply:
           }
         }
       }
-      case Failure(failure) => {
-        Logger.debug(s"[$apiType][findByNino] : { cacheKey : ${cacheKey(nino, apiType)}, exception: ${failure.getMessage} }")
+      case Failure(f) => {
+        Logger.debug(s"[$apiType][findByNino] : { cacheKey : ${cacheKey(nino, apiType)}, exception: ${f.getMessage} }")
         Future.successful(None)
       }
     }
   }
 
-  override def insertByNino(nino: Nino, apiType: APITypes, response: B)(implicit formats: OFormat[A], ec: ExecutionContext): Future[Boolean] = {
+  override def insertByNino(nino: Nino, response: B)
+                           (implicit formats: OFormat[A], e: ExecutionContext): Future[Boolean] = {
     collection.insert(apply(cacheKey(nino, apiType), response, DateTime.now(DateTimeZone.UTC))).map { result =>
-      Logger.debug(s"[$apiType][insertByNino] : { cacheKey : ${cacheKey(nino, apiType)}, request: $response, result: ${result.ok}, errors: ${result.errmsg} }")
+      Logger.debug(s"[$apiType][insertByNino] : { cacheKey : ${cacheKey(nino, apiType)}, " +
+        s"request: $response, result: ${result.ok}, errors: ${result.errmsg} }")
       result.ok
     }
   }

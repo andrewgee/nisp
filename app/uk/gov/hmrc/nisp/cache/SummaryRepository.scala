@@ -17,27 +17,26 @@
 package uk.gov.hmrc.nisp.cache
 
 import org.joda.time.{DateTime, DateTimeZone}
+import play.api.libs.concurrent.Execution.Implicits._
 import play.api.libs.json.Json
 import play.modules.reactivemongo.MongoDbConnection
-import uk.gov.hmrc.mongo.json.ReactiveMongoFormats
+import uk.gov.hmrc.nisp.models.enums.APITypes
 import uk.gov.hmrc.nisp.models.nps.NpsSummaryModel
 import uk.gov.hmrc.nisp.services.{CachingModel, CachingMongoService}
 
-import play.api.libs.concurrent.Execution.Implicits._
-
 case class SummaryCacheModel(key: String,
                              response: NpsSummaryModel,
-                             createdAt: DateTime = DateTime.now(DateTimeZone.UTC)) extends CachingModel[SummaryCacheModel, NpsSummaryModel]
+                             createdAt: DateTime = DateTime.now(DateTimeZone.UTC))
+  extends CachingModel[SummaryCacheModel, NpsSummaryModel]
 
 object SummaryCacheModel {
-  implicit val dateFormat = ReactiveMongoFormats.dateTimeFormats
-  implicit val idFormat = ReactiveMongoFormats.objectIdFormats
   implicit def formats = Json.format[SummaryCacheModel]
 }
 
 object SummaryRepository extends MongoDbConnection {
 
-  private lazy val cacheService = new CachingMongoService[SummaryCacheModel, NpsSummaryModel](SummaryCacheModel.formats, SummaryCacheModel.apply)
+  private lazy val cacheService = new CachingMongoService
+    [SummaryCacheModel, NpsSummaryModel](SummaryCacheModel.formats, SummaryCacheModel.apply, APITypes.Summary)
 
   def apply(): CachingMongoService[SummaryCacheModel, NpsSummaryModel] = cacheService
 }
