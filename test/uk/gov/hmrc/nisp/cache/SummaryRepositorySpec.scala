@@ -26,9 +26,13 @@ import uk.gov.hmrc.mongo.MongoSpecSupport
 import uk.gov.hmrc.nisp.helpers.TestAccountBuilder
 import uk.gov.hmrc.nisp.models.enums.APITypes
 import uk.gov.hmrc.nisp.models.nps._
+import uk.gov.hmrc.nisp.services.CachingMongoService
 import uk.gov.hmrc.play.test.UnitSpec
 
 import scala.concurrent.Future
+
+import scala.concurrent.ExecutionContext.Implicits.global
+
 
 class SummaryRepositorySpec extends UnitSpec with OneServerPerSuite with MongoSpecSupport with MockitoSugar {
 
@@ -38,7 +42,7 @@ class SummaryRepositorySpec extends UnitSpec with OneServerPerSuite with MongoSp
     1,
     NpsDate(1956, 4, 6),
     None,
-    NpsDate(2020, 4, 6),
+    NpsDate(2020, 4, 5),
     30,
     2019,
     Some(1),
@@ -82,9 +86,12 @@ class SummaryRepositorySpec extends UnitSpec with OneServerPerSuite with MongoSp
 
   "SummaryMongoService" should {
 
-    val service = new SummaryMongoService()
+
+
+    val service = new CachingMongoService[SummaryCacheModel, NpsSummaryModel](SummaryCacheModel.formats, SummaryCacheModel.apply)
 
     "persist a SummaryModel in the repo" in {
+
       val resultF = service.insertByNino(TestAccountBuilder.regularNino, APITypes.Summary, testSummaryModel)
       await(resultF) shouldBe true
     }
@@ -107,7 +114,7 @@ class SummaryRepositorySpec extends UnitSpec with OneServerPerSuite with MongoSp
 
       when(stubCollection.indexesManager).thenReturn(stubIndexesManager)
 
-      class TestSummaryMongoService extends SummaryMongoService  {
+      class TestSummaryMongoService extends CachingMongoService[SummaryCacheModel, NpsSummaryModel](SummaryCacheModel.formats, SummaryCacheModel.apply)  {
         override lazy val collection = stubCollection
       }
       when(stubCollection.find(Matchers.any())(Matchers.any())).thenThrow(new RuntimeException)
